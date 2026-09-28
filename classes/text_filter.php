@@ -26,9 +26,9 @@ use local_edguidance\token;
  *
  * A token is an empty <div data-edguidance="KEY"> that carries no guidance text; the text lives in
  * local_edguidance. This filter is therefore the one place the text reaches a page, and it only
- * does so for someone holding local/edguidance:view in the activity. Everywhere the filter does not
- * run - search indexing, raw web service text, a course with this filter switched off - there was
- * never any guidance in the text to leak.
+ * does so for someone holding local/edguidance:view in the activity - or, for a section summary, in
+ * the course. Everywhere the filter does not run - search indexing, raw web service text, a course
+ * with this filter switched off - there was never any guidance in the text to leak.
  *
  * Output depends on who is looking. That is safe because Moodle 4.5 has no text cache: filters run
  * per request, per user (filter_activitynames relies on the same).
@@ -78,23 +78,23 @@ class text_filter extends \core_filters\text_filter {
      * @return string HTML, or ''.
      */
     protected function replace(string $key): string {
-        // Guidance embedded inside guidance, or anywhere but an activity: nothing. The first would
-        // otherwise nest for as long as someone cared to, and a block only ever belongs to an
-        // activity, so a token anywhere else was copied in from one.
-        if (guidance::is_rendering() || !$this->context instanceof \context_module) {
+        // Guidance embedded inside guidance: nothing, or it would nest for as long as someone cared to.
+        if (guidance::is_rendering() || !has_capability('local/edguidance:view', $this->context)) {
             return '';
         }
 
-        if (!has_capability('local/edguidance:view', $this->context)) {
+        // Anywhere a block cannot belong: nothing. A token there was copied in from somewhere else.
+        $blocks = $this->blocks();
+        if ($blocks === null) {
             return '';
         }
 
-        $courseid = (int)$this->context->get_course_context()->instanceid;
-        $row = guidance::for_cm($courseid, (int)$this->context->instanceid)[$key] ?? null;
+        $row = $blocks[$key] ?? null;
 
         if (!$row) {
-            // Tokens are scoped to their activity, so one pasted in from elsewhere does not resolve.
-            // Worth telling someone who can fix it; everyone else sees nothing.
+            // Tokens are scoped to their activity, or a section's to its course, so one pasted in
+            // from elsewhere does not resolve. Worth telling someone who can fix it; everyone else
+            // sees nothing.
             if (!has_capability('local/edguidance:manage', $this->context)) {
                 return '';
             }
@@ -111,6 +111,29 @@ class text_filter extends \core_filters\text_filter {
         }
 
         return block::render_row($row);
+    }
+
+    /**
+     * The blocks text in this context can show, keyed by key, or null where no block can belong.
+     *
+     * An activity's text shows that activity's blocks. Text in a course context is a section
+     * summary - or the course summary - and shows any of the course's section blocks: a filter is
+     * told the context but not which section, so a section's key is scoped to its course.
+     * local_edguidance keeps each section's copy of a block its own.
+     *
+     * @return array<string, \stdClass>|null
+     */
+    protected function blocks(): ?array {
+        if ($this->context instanceof \context_module) {
+            $courseid = (int)$this->context->get_course_context()->instanceid;
+            return guidance::for_cm($courseid, (int)$this->context->instanceid);
+        }
+
+        if ($this->context instanceof \context_course && (int)$this->context->instanceid !== (int)SITEID) {
+            return guidance::for_sections((int)$this->context->instanceid);
+        }
+
+        return null;
     }
 
     /**

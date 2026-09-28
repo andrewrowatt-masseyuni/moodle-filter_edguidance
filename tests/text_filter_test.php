@@ -151,16 +151,60 @@ final class text_filter_test extends \advanced_testcase {
     }
 
     /**
-     * Outside an activity a token is simply removed, even for an administrator.
+     * Where no block can belong a token is simply removed, even for an administrator.
      */
-    public function test_non_module_contexts_are_stripped(): void {
+    public function test_other_contexts_are_stripped(): void {
         $this->resetAfterTest();
         [$course, , $row] = $this->make_book();
         $this->setAdminUser();
+        $text = '<p>Summary</p>' . token::html($row->embedkey);
 
-        $html = $this->filter(\context_course::instance($course->id), '<p>Summary</p>' . token::html($row->embedkey));
+        $this->assertSame('<p>Summary</p>', $this->filter(\context_coursecat::instance($course->category), $text));
+        $this->assertSame('<p>Summary</p>', $this->filter(\context_course::instance(SITEID), $text));
+        $this->assertSame('<p>Summary</p>', $this->filter(\context_system::instance(), $text));
+    }
 
-        $this->assertSame('<p>Summary</p>', $html);
+    /**
+     * A section's block shows in its course's context, to teachers only.
+     */
+    public function test_section_summary(): void {
+        $this->resetAfterTest();
+        $course = $this->getDataGenerator()->create_course();
+        $row = $this->getDataGenerator()->get_plugin_generator('local_edguidance')->create_block([
+            'sectionid' => get_fast_modinfo($course)->get_section_info(1)->id,
+            'guidance' => '<p>Unique guidance words.</p>',
+        ]);
+        $context = \context_course::instance($course->id);
+        $text = '<p>Week one.</p>' . token::html($row->embedkey);
+
+        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
+        $html = $this->filter($context, $text);
+        $this->assertStringContainsString('Unique guidance words.', $html);
+        $this->assertStringContainsString('Review teacher guidance for this section', $html);
+
+        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'student'));
+        $this->assertSame('<p>Week one.</p>', $this->filter($context, $text));
+    }
+
+    /**
+     * An activity's key does not resolve in a section summary, nor a section's in an activity.
+     */
+    public function test_activity_and_section_keys_do_not_cross(): void {
+        $this->resetAfterTest();
+        [$course, $modulecontext, $activity] = $this->make_book();
+        $section = $this->getDataGenerator()->get_plugin_generator('local_edguidance')->create_block([
+            'sectionid' => get_fast_modinfo($course)->get_section_info(1)->id,
+            'guidance' => '<p>Section words.</p>',
+        ]);
+        $this->setAdminUser();
+
+        $html = $this->filter(\context_course::instance($course->id), token::html($activity->embedkey));
+        $this->assertStringContainsString('edguidance-notfound', $html);
+        $this->assertStringNotContainsString('Unique guidance words.', $html);
+
+        $html = $this->filter($modulecontext, token::html($section->embedkey));
+        $this->assertStringContainsString('edguidance-notfound', $html);
+        $this->assertStringNotContainsString('Section words.', $html);
     }
 
     /**

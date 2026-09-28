@@ -5,9 +5,11 @@ three plugins.
 
 Replaces each embedded guidance token -
 `<div class="edguidance-embed" data-edguidance="KEY"></div>` - with the guidance block, for anyone
-holding `local/edguidance:view` in the activity, and with nothing for everyone else. A token outside
-an activity, or one whose key does not belong to this activity, is removed; editors see a short
-notice for the second case, so they can fix a token pasted in from elsewhere.
+holding `local/edguidance:view` in the activity (or, for a section summary, the course), and with
+nothing for everyone else. In a course context a token resolves to any of that course's section
+blocks, because a filter is not told which section it is formatting. A token anywhere else - the
+front page, a category, a block - is removed, as is one whose key does not belong here; editors see
+a short notice for the second case, so they can fix a token pasted in from elsewhere.
 
 The filter switches itself on site-wide when installed, at the end of the filter order. It must stay
 **On**: without it no one sees any guidance. Switching it off in a course hides guidance there from
