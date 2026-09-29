@@ -83,6 +83,41 @@ final class text_filter_test extends \advanced_testcase {
     }
 
     /**
+     * The block carries its Dismiss button, and the confirmation and undo that replace it, hidden
+     * until the button is clicked.
+     */
+    public function test_teacher_can_dismiss_the_block(): void {
+        $this->resetAfterTest();
+        [$course, $context, $row] = $this->make_book();
+        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
+
+        $html = $this->filter($context, token::html($row->embedkey));
+
+        $this->assertStringContainsString('data-action="edguidance-dismiss"', $html);
+        $this->assertStringContainsString('data-action="edguidance-undo"', $html);
+        $this->assertMatchesRegularExpression('~data-region="edguidance-dismissed"\s+hidden~', $html);
+    }
+
+    /**
+     * A teacher who has dismissed a block sees nothing of it - not even a trace to click - while a
+     * colleague still sees it in full.
+     */
+    public function test_dismissed_block_renders_nothing(): void {
+        $this->resetAfterTest();
+        [$course, $context, $row] = $this->make_book();
+        $text = '<p>Before</p>' . token::html($row->embedkey) . '<p>After</p>';
+
+        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
+        dismissed::set((int)$row->id, true);
+        $this->assertSame('<p>Before</p><p>After</p>', $this->filter($context, $text));
+        // Text that was only that guidance is no text at all, as it is for a student.
+        $this->assertSame('', $this->filter($context, token::html($row->embedkey)));
+
+        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
+        $this->assertStringContainsString('Unique guidance words.', $this->filter($context, $text));
+    }
+
+    /**
      * A student sees the text around it, and nothing of the guidance.
      */
     public function test_student_sees_nothing_of_it(): void {
@@ -180,7 +215,7 @@ final class text_filter_test extends \advanced_testcase {
         $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
         $html = $this->filter($context, $text);
         $this->assertStringContainsString('Unique guidance words.', $html);
-        $this->assertStringContainsString('Review teacher guidance for this section', $html);
+        $this->assertStringContainsString('data-guidanceid="' . $row->id . '"', $html);
 
         $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'student'));
         $this->assertSame('<p>Week one.</p>', $this->filter($context, $text));
