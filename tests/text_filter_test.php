@@ -157,18 +157,21 @@ final class text_filter_test extends \advanced_testcase {
     }
 
     /**
-     * A token copied in from another activity: a notice for editors, nothing for anyone else.
+     * A token copied in from another activity: a notice for those who may write guidance, who can
+     * fix it, and nothing for anyone else - teachers, editing or not, included.
      */
     public function test_unknown_key(): void {
         $this->resetAfterTest();
         [$course, $context] = $this->make_book();
         $text = '<p>Text</p>' . token::html('0123456789abcdef');
 
-        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'editingteacher'));
+        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'manager'));
         $this->assertStringContainsString('edguidance-notfound', $this->filter($context, $text));
 
-        $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
-        $this->assertSame('<p>Text</p>', $this->filter($context, $text));
+        foreach (['editingteacher', 'teacher'] as $role) {
+            $this->setUser($this->getDataGenerator()->create_and_enrol($course, $role));
+            $this->assertSame('<p>Text</p>', $this->filter($context, $text));
+        }
     }
 
     /**
