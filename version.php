@@ -25,11 +25,11 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'filter_edguidance';
-$plugin->release = '0.1.0';
-$plugin->version = 2026092500;
+$plugin->release = '1.0.0';
+$plugin->version = 2026102200;
 $plugin->requires = 2024100700;
 $plugin->supported = [405, 405];
-$plugin->maturity = MATURITY_BETA;
+$plugin->maturity = MATURITY_STABLE;
 $plugin->dependencies = [
-    'local_edguidance' => 2026092500,
+    'local_edguidance' => 2026102200,
 ];
