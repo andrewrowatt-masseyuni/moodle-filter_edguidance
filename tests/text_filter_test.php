@@ -69,6 +69,16 @@ final class text_filter_test extends \advanced_testcase {
     }
 
     /**
+     * Switch the filter on site-wide, for tests that go through format_text().
+     *
+     * Installing the filter leaves it disabled, as for any filter, so a site must switch it on.
+     */
+    private function enable_filter(): void {
+        filter_set_global_state('edguidance', TEXTFILTER_ON);
+        \filter_manager::reset_caches();
+    }
+
+    /**
      * A teacher sees the guidance where the token was.
      */
     public function test_teacher_sees_the_block(): void {
@@ -272,7 +282,7 @@ final class text_filter_test extends \advanced_testcase {
             'cmid' => $book->cmid,
             'guidance' => '<p>Outer words.</p>' . token::html($inner->embedkey),
         ]);
-        filter_set_global_state('edguidance', TEXTFILTER_ON);
+        $this->enable_filter();
         $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
 
         $html = format_text(token::html($outer->embedkey), FORMAT_HTML, [
@@ -310,14 +320,14 @@ final class text_filter_test extends \advanced_testcase {
     }
 
     /**
-     * Through format_text(), with the filter on as installed: the path every host takes.
+     * Through format_text(), with the filter on: the path every host takes.
      *
      * With noclean, as book chapters, lesson pages and activity descriptions are all formatted.
      */
     public function test_end_to_end_through_format_text(): void {
         $this->resetAfterTest();
         [$course, $context, $row] = $this->make_book();
-        $this->assertSame(TEXTFILTER_ON, (int)filter_get_global_states()['edguidance']->active);
+        $this->enable_filter();
 
         $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
         $this->assertStringContainsString(
@@ -335,6 +345,8 @@ final class text_filter_test extends \advanced_testcase {
     public function test_cleaned_text_fails_closed(): void {
         $this->resetAfterTest();
         [$course, $context, $row] = $this->make_book();
+        // On, or the guidance would be missing for want of a filter rather than for the cleaning.
+        $this->enable_filter();
         $this->setUser($this->getDataGenerator()->create_and_enrol($course, 'teacher'));
 
         $html = format_text(token::html($row->embedkey), FORMAT_HTML, ['context' => $context]);

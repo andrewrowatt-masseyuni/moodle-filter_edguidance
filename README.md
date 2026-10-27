@@ -11,9 +11,12 @@ blocks, because a filter is not told which section it is formatting. A token any
 front page, a category, a block - is removed, as is one whose key does not belong here; editors see
 a short notice for the second case, so they can fix a token pasted in from elsewhere.
 
-The filter switches itself on site-wide when installed, at the end of the filter order. It must stay
-**On**: without it no one sees any guidance. Switching it off in a course hides guidance there from
-teachers too, but exposes nothing to students - the guidance was never in the text.
+The filter installs disabled, as every filter does: switch it **On** under *Site administration >
+Plugins > Filters > Manage filters*, where it joins the end of the filter order. Without it no one
+sees any guidance. Keep it last: the guidance it inserts has already been through the filters, and
+any filter after it would run over that text a second time. Switching it off in a course hides
+guidance there from teachers too, but exposes nothing to students - the guidance was never in the
+text.
 
 Output depends on who is looking, which is safe because Moodle 4.5 has no text cache. Text that is
 cleaned before filtering (under `$CFG->forceclean`, say) loses the token's `data-` attribute and shows
